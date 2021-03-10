@@ -1,4 +1,4 @@
-# network-monitor
+# Network-Monitor
 Small ruby script to run ping for 60 seconds and evaluate the loss percentage and log results.
 
 ```shell
@@ -15,7 +15,16 @@ If the loss percentage greater than 10 percent
   Immediately repeat ping monitoring
 ```
 
-Output is written to file based on current date:
+### Usage
+ruby network_monitor.rb
+
+**As a detached process:**
+ruby network_monitor.rb > /dev/null &
+
+
+### Output
+
+Written to file based on current date
 
 Example output file: **2021-03-10.txt**
 ```yaml
