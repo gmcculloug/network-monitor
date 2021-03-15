@@ -1,4 +1,4 @@
-# frozen_string_literal: true
+# frozen_string_literal: false
 
 # OptimumTrello class creates lists/cards in Trello based on the date
 class OptimumTrello
@@ -14,6 +14,22 @@ class OptimumTrello
     config.member_token = TRELLO_MEMBER_TOKEN
   end
 
+  def self.create_card(name, ping_output)
+    new.create_card(name, ping_output)
+  end
+
+  def create_card(name, ping_output)
+    byebug
+    Trello::Card.create(
+      :name => name,
+      :list_id => find_or_create_list.id,
+      :desc => Time.now.iso8601,
+      :pos => 'top'
+    ).tap { |card| add_comments(card, ping_output) }
+  end
+
+  private
+  
   def find_optimum_board
     Trello::Board.all.detect { |b| b.name == TRELLO_BOARD_NAME }
   end
@@ -30,15 +46,6 @@ class OptimumTrello
     list
   end
 
-  def create_card(name, ping_output)
-    Trello::Card.create(
-      :name => name,
-      :list_id => find_or_create_list.id,
-      :desc => Time.now.iso8601,
-      :pos => 'top'
-    ).tap { |card| add_comments(card, ping_output) }
-  end
-
   def add_comments(card, ping_output)
     # Use reverse! as new comments appear at the top of the card.
     # This allows the ping output to be read top to bottom.
@@ -48,10 +55,19 @@ class OptimumTrello
   end
 
   def chunk_output(ping_output)
-    ping_output.unpack("a#{MAX_CARD_DESCRIPITON}" * (ping_output.size / MAX_CARD_DESCRIPITON.to_f).ceil)
-  end
+    result = [] << data = ''
 
-  def self.create_card(name, ping_output)
-    new.create_card(name, ping_output)
+    ping_output.split("\n").each do |new_str|
+      new_str << "\n"
+      result << data = '' if data.length + new_str.length >= MAX_CARD_DESCRIPITON
+      data << new_str
+    end
+
+    result
   end
 end
+
+require 'byebug'
+require 'time'
+byebug
+OptimumTrello.create_card(Time.now.iso8601, File.read('./logs/2021-03-04T16-29-46.txt'))
