@@ -28,7 +28,7 @@ begin
 
     write_output "SEQ:[#{seq}] #{ping.stats.inspect} finished at [#{end_time.iso8601}]" \
                  " after #{elapsed_time.to_i} seconds"
-    write_output "SEQ:[#{seq}] #{ping.stats_line }"
+    write_output "SEQ:[#{seq}] #{ping.stats_line}"
 
     if ping.stats[:loss_pct] >= PACKET_LOSS_ACCEPTABLE_LIMIT
       write_output "#{ping.output.join("\n")}\n#{ping.stats.inspect}\n"

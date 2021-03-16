@@ -45,7 +45,7 @@ class OptimumTrello
 
     today = Date.today.iso8601
     list = board.lists.detect { |l| l.name == today }
-    list = Trello::List.create(:name => today, :board_id => board.id, :pos => 1) if list.nil?  # rubocop:disable Style/HashSyntax
+    list = Trello::List.create(:name => today, :board_id => board.id, :pos => 1) if list.nil? # rubocop:disable Style/HashSyntax
     raise "Error: Failed to create list for today [#{today}]" if list.nil?
 
     list
