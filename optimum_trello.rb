@@ -1,4 +1,4 @@
-# frozen_string_literal: false
+# frozen_string_literal: true
 
 # OptimumTrello class creates lists/cards in Trello based on the date
 class OptimumTrello
@@ -14,22 +14,27 @@ class OptimumTrello
     config.member_token = TRELLO_MEMBER_TOKEN
   end
 
-  def self.create_card(name, ping_output)
-    new.create_card(name, ping_output)
+  def self.create_card(name, description, ping_output)
+    new.create_card(name, description, ping_output)
   end
 
-  def create_card(name, ping_output)
-    byebug
+  def create_card(name, description, ping_output)
     Trello::Card.create(
+      # rubocop:disable Style/HashSyntax
       :name => name,
       :list_id => find_or_create_list.id,
-      :desc => Time.now.iso8601,
+      :desc => description,
       :pos => 'top'
+      # rubocop:enable Style/HashSyntax
     ).tap { |card| add_comments(card, ping_output) }
   end
 
+  def self.configured?
+    !!(TRELLO_DEVELOPER_PUBLIC_KEY && TRELLO_MEMBER_TOKEN)
+  end
+
   private
-  
+
   def find_optimum_board
     Trello::Board.all.detect { |b| b.name == TRELLO_BOARD_NAME }
   end
@@ -40,7 +45,7 @@ class OptimumTrello
 
     today = Date.today.iso8601
     list = board.lists.detect { |l| l.name == today }
-    list = Trello::List.create(:name => today, :board_id => board.id, :pos => 1) if list.nil?
+    list = Trello::List.create(:name => today, :board_id => board.id, :pos => 1) if list.nil?  # rubocop:disable Style/HashSyntax
     raise "Error: Failed to create list for today [#{today}]" if list.nil?
 
     list
@@ -55,19 +60,14 @@ class OptimumTrello
   end
 
   def chunk_output(ping_output)
-    result = [] << data = ''
+    result = [] << data = String.new
 
     ping_output.split("\n").each do |new_str|
       new_str << "\n"
-      result << data = '' if data.length + new_str.length >= MAX_CARD_DESCRIPITON
+      result << data = String.new if data.length + new_str.length >= MAX_CARD_DESCRIPITON
       data << new_str
     end
 
     result
   end
 end
-
-require 'byebug'
-require 'time'
-byebug
-OptimumTrello.create_card(Time.now.iso8601, File.read('./logs/2021-03-04T16-29-46.txt'))
