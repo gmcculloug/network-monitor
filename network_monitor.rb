@@ -6,7 +6,8 @@ require_relative 'optimum_trello'
 require_relative 'ping_stats'
 
 PACKET_LOSS_ACCEPTABLE_LIMIT = 10
-SUCCESSFUL_PING_DELAY_IN_SECS = 300 - PingStats::PING_COUNT   # 5 mins - Ping time
+PING_COUNT = 60
+SUCCESSFUL_PING_DELAY_IN_SECS = 300 - PING_COUNT   # 5 mins - Ping time
 
 def write_output(data)
   puts data
@@ -20,7 +21,7 @@ program_start_time = Time.now
 begin
   loop do
     start_time = Time.now
-    ping = PingStats.create
+    ping = PingStats.create(PING_COUNT)
     end_time = Time.now
 
     elapsed_time = end_time - start_time

@@ -2,14 +2,17 @@
 
 # Runs ping and parses output
 class PingStats
-  PING_COUNT = 60
   PING_TARGET_ADDRESS = '8.8.8.8'
   PING_STATS_REGEX = /(?<transmitted>\d+) .* (?<received>\d+) .* (?<loss_pct>\d+.?\d?+)%/.freeze
 
-  attr_reader :output, :stats_line, :stats
+  attr_reader :output, :stats_line, :stats, :ping_count
 
-  def self.create
-    new.tap(&:run_ping)
+  def initialize(ping_count = nil)
+    @ping_count = ping_count || 60
+  end
+
+  def self.create(ping_count = nil)
+    new(ping_count).tap(&:run_ping)
   end
 
   def run_ping
