@@ -40,7 +40,7 @@ class OptimumTrello
   end
 
   def card_title
-    Date.today.strftime("%Y-%m-%d (%a)")
+    Date.today.strftime('%Y-%m-%d (%a)')
   end
 
   def find_or_create_list

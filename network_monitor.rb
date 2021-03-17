@@ -7,7 +7,7 @@ require_relative 'ping_stats'
 
 PACKET_LOSS_ACCEPTABLE_LIMIT = 10
 PING_COUNT = 60
-SUCCESSFUL_PING_DELAY_IN_SECS = 300 - PING_COUNT   # 5 mins - Ping time
+SUCCESSFUL_PING_DELAY_IN_SECS = 300 - PING_COUNT # 5 mins - Ping time
 
 def write_output(data)
   puts data
@@ -15,13 +15,12 @@ def write_output(data)
 end
 
 def card_title
-  Time.now.strftime("%I:%M:%S %p  (%Y-%m-%d)")
+  Time.now.strftime('%I:%M %p  (%Y-%m-%d)')
 end
 
 seq = 1
 highest_loss_pct = 0
 program_start_time = Time.now
-unset_stats = []
 
 begin
   loop do
@@ -42,7 +41,7 @@ begin
       begin
         OptimumTrello.create_card(card_title, ping.stats_line, ping.output.join("\n"))
       rescue RestClient::Exceptions::OpenTimeout
-        write_output "Failed to create trello card, retrying..."
+        write_output 'Failed to create trello card, retrying...'
         retry
       end
     end
