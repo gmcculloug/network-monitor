@@ -14,9 +14,14 @@ def write_output(data)
   File.open("#{Date.today.iso8601}.txt", 'a') { |f| f.write "#{data}\n" }
 end
 
+def card_title
+  Time.now.strftime("%I:%M:%S %p  (%Y-%m-%d)")
+end
+
 seq = 1
 highest_loss_pct = 0
 program_start_time = Time.now
+unset_stats = []
 
 begin
   loop do
@@ -34,12 +39,16 @@ begin
     if ping.stats[:loss_pct] >= PACKET_LOSS_ACCEPTABLE_LIMIT
       write_output "#{ping.output.join("\n")}\n#{ping.stats.inspect}\n"
 
-      OptimumTrello.create_card("#{Time.now.iso8601} - Packet Loss: #{ping.stats[:loss_pct]}%",
-                                ping.stats_line,
-                                ping.output.join("\n"))
+      begin
+        OptimumTrello.create_card(card_title, ping.stats_line, ping.output.join("\n"))
+      rescue RestClient::Exceptions::OpenTimeout
+        write_output "Failed to create trello card, retrying..."
+        retry
+      end
     end
 
-    sleep(SUCCESSFUL_PING_DELAY_IN_SECS) if ping.stats[:loss_pct].zero?
+    # sleep(SUCCESSFUL_PING_DELAY_IN_SECS) if ping.stats[:loss_pct].zero?
+    sleep(SUCCESSFUL_PING_DELAY_IN_SECS)
     seq += 1
   end
 rescue Interrupt
