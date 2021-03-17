@@ -14,8 +14,8 @@ def write_output(data)
   File.open("#{Date.today.iso8601}.txt", 'a') { |f| f.write "#{data}\n" }
 end
 
-def card_title
-  Time.now.strftime('%I:%M %p  (%Y-%m-%d)')
+def card_title(ping)
+  Time.now.strftime("%I:%M %p  (%Y-%m-%d) - Packet Loss: #{ping.stats[:loss_pct]}%%")
 end
 
 seq = 1
@@ -39,7 +39,7 @@ begin
       write_output "#{ping.output.join("\n")}\n#{ping.stats.inspect}\n"
 
       begin
-        OptimumTrello.create_card(card_title, ping.stats_line, ping.output.join("\n"))
+        OptimumTrello.create_card(card_title(ping), ping.stats_line, ping.output.join("\n"))
       rescue RestClient::Exceptions::OpenTimeout
         write_output 'Failed to create trello card, retrying...'
         retry

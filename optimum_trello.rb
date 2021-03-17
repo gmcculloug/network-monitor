@@ -39,7 +39,7 @@ class OptimumTrello
     Trello::Board.all.detect { |b| b.name == TRELLO_BOARD_NAME }
   end
 
-  def card_title
+  def list_title
     Date.today.strftime('%Y-%m-%d (%a)')
   end
 
@@ -47,10 +47,10 @@ class OptimumTrello
     board = find_optimum_board
     raise "Error: Board [#{TRELLO_BOARD_NAME}] not found" if board.nil?
 
-    current_card_title = card_title
-    list = board.lists.detect { |l| l.name == current_card_title }
-    list = Trello::List.create(:name => current_card_title, :board_id => board.id, :pos => 1) if list.nil? # rubocop:disable Style/HashSyntax
-    raise "Error: Failed to create list for today [#{current_card_title}]" if list.nil?
+    current_list_title = list_title
+    list = board.lists.detect { |l| l.name == current_list_title }
+    list = Trello::List.create(:name => current_list_title, :board_id => board.id, :pos => 1) if list.nil? # rubocop:disable Style/HashSyntax
+    raise "Error: Failed to create list for today [#{current_list_title}]" if list.nil?
 
     list
   end
