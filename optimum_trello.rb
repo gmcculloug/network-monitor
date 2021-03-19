@@ -49,7 +49,7 @@ class OptimumTrello
 
     current_list_title = list_title
     list = board.lists.detect { |l| l.name == current_list_title }
-    list = Trello::List.create(:name => current_list_title, :board_id => board.id, :pos => 1) if list.nil? # rubocop:disable Style/HashSyntax
+    list = Trello::List.create(:name => current_list_title, :board_id => board.id, :pos => 0) if list.nil? # rubocop:disable Style/HashSyntax
     raise "Error: Failed to create list for today [#{current_list_title}]" if list.nil?
 
     list
