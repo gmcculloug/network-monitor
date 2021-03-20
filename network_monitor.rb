@@ -8,10 +8,21 @@ require_relative 'ping_stats'
 PACKET_LOSS_ACCEPTABLE_LIMIT = 10
 PING_COUNT = 60
 SUCCESSFUL_PING_DELAY_IN_SECS = 300 - PING_COUNT # 5 mins - Ping time
+OPTIMUM_OUTPUT_PATH = ENV['OPTIMUM_OUTPUT_PATH']
 
 def write_output(data)
   puts data
-  File.open("#{Date.today.iso8601}.txt", 'a') { |f| f.write "#{data}\n" }
+  File.open(output_file("#{Date.today.iso8601}.txt"), 'a') { |f| f.write "#{data}\n" }
+end
+
+def write_stats(stats)
+  File.open(output_file('network_monitor.csv'), 'a') do |f|
+    f.write "#{Time.now.iso8601},#{stats[:loss_pct]}\n"
+  end
+end
+
+def output_file(filename)
+  OPTIMUM_OUTPUT_PATH ? File.join(OPTIMUM_OUTPUT_PATH, filename) : filename
 end
 
 def card_title(ping)
@@ -31,9 +42,8 @@ begin
     elapsed_time = end_time - start_time
     highest_loss_pct = ping.stats[:loss_pct] if highest_loss_pct < ping.stats[:loss_pct]
 
-    write_output "SEQ:[#{seq}] #{ping.stats.inspect} finished at [#{end_time.iso8601}]" \
-                 " after #{elapsed_time.to_i} seconds"
-    write_output "SEQ:[#{seq}] #{ping.stats_line}"
+    write_output "[#{seq}] #{ping.stats.inspect} finished at [#{end_time.iso8601}] after #{elapsed_time.to_i} seconds"
+    write_stats(ping.stats)
 
     if ping.stats[:loss_pct] >= PACKET_LOSS_ACCEPTABLE_LIMIT
       write_output "#{ping.output.join("\n")}\n#{ping.stats.inspect}\n"
