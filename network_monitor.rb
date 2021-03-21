@@ -8,6 +8,8 @@ require_relative 'ping_stats'
 PACKET_LOSS_ACCEPTABLE_LIMIT = 10
 PING_COUNT = 60
 SUCCESSFUL_PING_DELAY_IN_SECS = 300 - PING_COUNT # 5 mins - Ping time
+PING_EXTERNAL_TARGET_ADDRESS = '8.8.8.8'
+PING_PROVIDER_TARGET_ADDRESS = '69.119.60.228'
 OPTIMUM_OUTPUT_PATH = ENV['OPTIMUM_OUTPUT_PATH']
 
 def write_output(data)
@@ -15,9 +17,9 @@ def write_output(data)
   File.open(output_file("#{Date.today.iso8601}.txt"), 'a') { |f| f.write "#{data}\n" }
 end
 
-def write_stats(stats)
+def write_stats(ext_stats, int_stats)
   File.open(output_file('network_monitor.csv'), 'a') do |f|
-    f.write "#{Time.now.iso8601},#{stats[:loss_pct]}\n"
+    f.write "#{Time.now.iso8601},#{ext_stats[:loss_pct]},#{int_stats[:loss_pct]}\n"
   end
 end
 
@@ -29,6 +31,17 @@ def card_title(ping)
   Time.now.strftime("%I:%M %p  (%Y-%m-%d) - Packet Loss: #{ping.stats[:loss_pct]}%%")
 end
 
+def run_pings
+  [
+    PingStats.new(PING_EXTERNAL_TARGET_ADDRESS, PING_COUNT),
+    PingStats.new(PING_PROVIDER_TARGET_ADDRESS, PING_COUNT)
+  ].tap do |pings|
+    threads = []
+    pings.each { |p| threads << Thread.new { p.run_ping } }
+    threads.each(&:join)
+  end
+end
+
 seq = 1
 highest_loss_pct = 0
 program_start_time = Time.now
@@ -36,20 +49,20 @@ program_start_time = Time.now
 begin
   loop do
     start_time = Time.now
-    ping = PingStats.create(PING_COUNT)
+    ping_ext, ping_int = run_pings
     end_time = Time.now
 
     elapsed_time = end_time - start_time
-    highest_loss_pct = ping.stats[:loss_pct] if highest_loss_pct < ping.stats[:loss_pct]
+    highest_loss_pct = ping_ext.stats[:loss_pct] if highest_loss_pct < ping_ext.stats[:loss_pct]
 
-    write_output "[#{seq}] #{ping.stats.inspect} finished at [#{end_time.iso8601}] after #{elapsed_time.to_i} seconds"
-    write_stats(ping.stats)
+    write_output "[#{seq}] #{ping_ext.stats.inspect} finished at [#{end_time.iso8601}] after #{elapsed_time.to_i} seconds"
+    write_stats(ping_ext.stats, ping_int.stats)
 
-    if ping.stats[:loss_pct] >= PACKET_LOSS_ACCEPTABLE_LIMIT
-      write_output "#{ping.output.join("\n")}\n#{ping.stats.inspect}\n"
+    if ping_ext.stats[:loss_pct] >= PACKET_LOSS_ACCEPTABLE_LIMIT
+      write_output "#{ping_ext.output.join("\n")}\n#{ping_ext.stats.inspect}\n"
 
       begin
-        OptimumTrello.create_card(card_title(ping), ping.stats_line, ping.output.join("\n"))
+        OptimumTrello.create_card(card_title(ping_ext), ping_ext.stats_line, ping_ext.output.join("\n"))
       rescue RestClient::Exceptions::OpenTimeout
         write_output 'Failed to create trello card, retrying...'
         retry
