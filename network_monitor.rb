@@ -5,7 +5,7 @@ require 'date'
 require_relative 'optimum_trello'
 require_relative 'ping_stats'
 
-PACKET_LOSS_ACCEPTABLE_LIMIT = 10
+PACKET_LOSS_ACCEPTABLE_LIMIT = 5
 PING_COUNT = 60
 SUCCESSFUL_PING_DELAY_IN_SECS = 300 - PING_COUNT # 5 mins - Ping time
 PING_EXTERNAL_TARGET_ADDRESS = '8.8.8.8'
@@ -45,11 +45,13 @@ end
 seq = 1
 highest_loss_pct = 0
 program_start_time = Time.now
+unsent_pings = []
 
 begin
   loop do
     start_time = Time.now
     ping_ext, ping_int = run_pings
+    unsent_pings << [ping_ext, ping_int]
     end_time = Time.now
 
     elapsed_time = end_time - start_time
@@ -58,14 +60,16 @@ begin
     write_output "[#{seq}] #{ping_ext.stats.inspect} finished at [#{end_time.iso8601}] after #{elapsed_time.to_i} seconds"
     write_stats(ping_ext.stats, ping_int.stats)
 
-    if ping_ext.stats[:loss_pct] >= PACKET_LOSS_ACCEPTABLE_LIMIT
-      write_output "#{ping_ext.output.join("\n")}\n#{ping_ext.stats.inspect}\n"
+    unsent_pings.delete_if do |ext, _int|
+      if ext.stats[:loss_pct] >= PACKET_LOSS_ACCEPTABLE_LIMIT
+        write_output "#{ext.output.join("\n")}\n#{ext.stats.inspect}\n"
 
-      begin
-        OptimumTrello.create_card(card_title(ping_ext), ping_ext.stats_line, ping_ext.output.join("\n"))
-      rescue RestClient::Exceptions::OpenTimeout
-        write_output 'Failed to create trello card, retrying...'
-        retry
+        begin
+          OptimumTrello.create_card(card_title(ext), ext.stats_line, ext.output.join("\n"))
+        rescue RestClient::Exceptions::OpenTimeout
+          write_output 'Failed to create trello card, retrying...'
+          break
+        end
       end
     end
 
