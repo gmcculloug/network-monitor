@@ -6,7 +6,7 @@ require_relative 'optimum_trello'
 require_relative 'ping_stats'
 
 PACKET_LOSS_ACCEPTABLE_LIMIT = 5
-PING_COUNT = 60
+PING_COUNT = 5
 SUCCESSFUL_PING_DELAY_IN_SECS = 300 - PING_COUNT # 5 mins - Ping time
 PING_EXTERNAL_TARGET_ADDRESS = '8.8.8.8'
 PING_PROVIDER_TARGET_ADDRESS = '69.119.60.228'
@@ -42,16 +42,14 @@ def run_pings
   end
 end
 
-seq = 1
-highest_loss_pct = 0
-program_start_time = Time.now
-unsent_pings = []
+def main(unsent_pings)
+  seq = 1
+  highest_loss_pct = 0
+  program_start_time = Time.now
 
-begin
   loop do
     start_time = Time.now
     ping_ext, ping_int = run_pings
-    unsent_pings << [ping_ext, ping_int]
     end_time = Time.now
 
     elapsed_time = end_time - start_time
@@ -60,26 +58,26 @@ begin
     write_output "[#{seq}] #{ping_ext.stats.inspect} finished at [#{end_time.iso8601}] after #{elapsed_time.to_i} seconds"
     write_stats(ping_ext.stats, ping_int.stats)
 
-    unsent_pings.delete_if do |ext, _int|
-      if ext.stats[:loss_pct] >= PACKET_LOSS_ACCEPTABLE_LIMIT
-        write_output "#{ext.output.join("\n")}\n#{ext.stats.inspect}\n"
-
-        begin
-          OptimumTrello.create_card(card_title(ext), ext.stats_line, ext.output.join("\n"))
-        rescue RestClient::Exceptions::OpenTimeout
-          write_output 'Failed to create trello card, retrying...'
-          break
-        end
-      end
+    if ping_ext.stats[:loss_pct] >= PACKET_LOSS_ACCEPTABLE_LIMIT
+      write_output "#{ping_ext.output.join("\n")}\n#{ping_ext.stats.inspect}\n"
+      unsent_pings << ping_ext
     end
 
     # sleep(SUCCESSFUL_PING_DELAY_IN_SECS) if ping.stats[:loss_pct].zero?
-    sleep(SUCCESSFUL_PING_DELAY_IN_SECS)
+    # sleep(SUCCESSFUL_PING_DELAY_IN_SECS)
     seq += 1
   end
 rescue Interrupt
   write_output "Highest loss percentage: [#{highest_loss_pct}]"
   write_output "Run times - Start: #{program_start_time.iso8601}  -  Stop: #{Time.now.iso8601}  " \
-               "-  Elapsed: #{Time.now - program_start_time}"
+                "-  Elapsed: #{Time.now - program_start_time}"
   exit
 end
+
+unsent_pings = []
+threads = []
+
+threads << Thread.new { OptimumTrello.watcher_thread(unsent_pings) }
+threads << Thread.new { main(unsent_pings) }
+threads.each(&:join)
+

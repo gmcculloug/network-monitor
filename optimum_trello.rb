@@ -14,6 +14,19 @@ class OptimumTrello
     config.member_token = TRELLO_MEMBER_TOKEN
   end
 
+  def self.watcher_thread(pings)
+    loop do
+      if (ping = pings.first)
+        OptimumTrello.create_card(card_title(ping), ping.stats_line, ping.output.join("\n"))
+        pings.shift
+      end
+    rescue RestClient::Exceptions::OpenTimeout
+      write_output 'Failed to create trello card, retrying...'
+      sleep(10)
+      retry
+    end
+  end
+
   def self.create_card(name, description, ping_output)
     new.create_card(name, description, ping_output)
   end
