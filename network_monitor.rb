@@ -6,7 +6,7 @@ require_relative 'optimum_trello'
 require_relative 'ping_stats'
 
 PACKET_LOSS_ACCEPTABLE_LIMIT = 5
-PING_COUNT = 5
+PING_COUNT = 60
 SUCCESSFUL_PING_DELAY_IN_SECS = 300 - PING_COUNT # 5 mins - Ping time
 PING_EXTERNAL_TARGET_ADDRESS = '8.8.8.8'
 PING_PROVIDER_TARGET_ADDRESS = '69.119.60.228'
@@ -55,7 +55,8 @@ def main(unsent_pings)
     elapsed_time = end_time - start_time
     highest_loss_pct = ping_ext.stats[:loss_pct] if highest_loss_pct < ping_ext.stats[:loss_pct]
 
-    write_output "[#{seq}] #{ping_ext.stats.inspect} finished at [#{end_time.iso8601}] after #{elapsed_time.to_i} seconds"
+    write_output "[#{seq}] #{ping_ext.stats.inspect} finished at [#{end_time.iso8601}]" \
+    " after #{elapsed_time.to_i} seconds"
     write_stats(ping_ext.stats, ping_int.stats)
 
     if ping_ext.stats[:loss_pct] >= PACKET_LOSS_ACCEPTABLE_LIMIT
@@ -75,9 +76,5 @@ rescue Interrupt
 end
 
 unsent_pings = []
-threads = []
-
-threads << Thread.new { OptimumTrello.watcher_thread(unsent_pings) }
-threads << Thread.new { main(unsent_pings) }
-threads.each(&:join)
-
+[Thread.new { OptimumTrello.watcher_thread(unsent_pings) },
+ Thread.new { main(unsent_pings) }].each(&:join)

@@ -16,14 +16,20 @@ class OptimumTrello
 
   def self.watcher_thread(pings)
     loop do
-      if (ping = pings.first)
-        OptimumTrello.create_card(card_title(ping), ping.stats_line, ping.output.join("\n"))
-        pings.shift
-      end
+      process_pings(pings)
     rescue RestClient::Exceptions::OpenTimeout
       write_output 'Failed to create trello card, retrying...'
       sleep(10)
       retry
+    end
+  end
+
+  def self.process_pings(pings)
+    if (ping = pings.first)
+      OptimumTrello.create_card(card_title(ping), ping.stats_line, ping.output.join("\n"))
+      pings.shift
+    else
+      sleep(30)
     end
   end
 
